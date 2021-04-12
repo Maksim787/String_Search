@@ -1,25 +1,25 @@
 #include <algorithm>
-#include <cmath>
 #include <iostream>
+#include <numeric>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 const int ALPHABET_SIZE = 26 + 1;
 
-class RegularSearch {
+class SuffixArray {
 public:
     std::string str;
     int n;
     std::vector<int> powers;
     std::vector<std::vector<int>> suffix_array;
-    std::vector<std::vector<int>> r_suffix_array;
     int k;
 
-    explicit RegularSearch(const std::string& input_str) : str(input_str + static_cast<char>('z' + 1)),
-                                                           n(str.size()),
-                                                           powers(powers_of_2(n)),
-                                                           suffix_array(powers.size()),
-                                                           k(suffix_array.size()) {
+    explicit SuffixArray(const std::string& input_str) : str(input_str + static_cast<char>('z' + 1)),
+                                                         n(str.size()),
+                                                         powers(powers_of_2(n)),
+                                                         suffix_array(powers.size()),
+                                                         k(suffix_array.size()) {
         MakeSuffixArray();
     }
 
@@ -49,6 +49,11 @@ public:
     }
 
     std::vector<int> Search(const std::string& pattern) {
+        if (pattern.empty()) {
+            std::vector<int> ans(str.size());
+            std::iota(ans.begin(), ans.end(), 0);
+            return ans;
+        }
         int power = *std::lower_bound(powers.begin(), powers.end(), pattern.size());
 
         int left = left_bound(pattern, power);
@@ -56,6 +61,39 @@ public:
         std::vector<int> ans;
         for (int i = left; i < right; ++i) {
             ans.push_back(suffix_array[power][i]);
+        }
+        return ans;
+    }
+
+    std::vector<int> RegularSearch(const std::string& pattern) {
+        std::vector<std::pair<int, std::string>> small_patterns;
+        {
+            std::string small_pattern;
+            for (size_t i = 0; i < pattern.size(); ++i) {
+                char c = pattern[i];
+                if (c == '?') {
+                    small_patterns.emplace_back(i - small_pattern.size(), small_pattern);
+                    small_pattern.clear();
+                } else {
+                    small_pattern.push_back(c);
+                }
+            }
+            if (!small_pattern.empty()) {
+                small_patterns.emplace_back(pattern.size() - small_pattern.size(), small_pattern);
+            }
+        }
+        std::unordered_map<int, int> pos_counts;
+        for (auto&[small_pattern_pos, small_pattern] : small_patterns) {
+            std::vector<int> res_pos = Search(small_pattern);
+            for (int found_pos : res_pos) {
+                ++pos_counts[found_pos - small_pattern_pos];
+            }
+        }
+        std::vector<int> ans;
+        for (auto[found_pos, count] : pos_counts) {
+            if (found_pos >= 0 && count == static_cast<int>(small_patterns.size())) {
+                ans.push_back(found_pos);
+            }
         }
         return ans;
     }
@@ -143,7 +181,7 @@ public:
         return classes;
     }
 
-    std::vector<int> count_pair_sort(const std::vector<std::pair<int, int>>& pairs) {
+    std::vector<int> count_pair_sort(const std::vector<std::pair<int, int>>& pairs) const {
         std::vector<int> cnt(n);
         // сортируем по pair.second
         for (int i = 0; i < n; ++i) {
@@ -203,11 +241,48 @@ public:
     }
 };
 
+void PrintLine(int n = 20) {
+    for (int i = 0; i < n; ++i) {
+        std::cout << "-";
+    }
+    std::cout << "\n";
+}
+
+void MakeExampleSearch(const std::string& str, const std::vector<std::string>& patterns) {
+    std::cout << "Simple search:\n";
+    SuffixArray search(str);
+    std::cout << "string: " << str << "\n";
+    for (const std::string& pattern : patterns) {
+        std::cout << "pattern: " << pattern << "\n";
+        std::vector<int> pos = search.Search(pattern);
+        std::cout << "found:\n";
+        for (int p : pos) {
+            std::cout << p << " " << str.substr(p, pattern.size()) << "\n";
+        }
+    }
+    PrintLine();
+}
+
+void MakeExampleRegularSearch(const std::string& str, const std::vector<std::string>& patterns) {
+    std::cout << "Regular search:\n";
+    SuffixArray search(str);
+    std::cout << "string: " << str << "\n";
+    for (const std::string& pattern : patterns) {
+        std::cout << "pattern: " << pattern << "\n";
+        std::vector<int> pos = search.RegularSearch(pattern);
+        std::cout << "found:\n";
+        for (int p : pos) {
+            std::cout << p << " " << str.substr(p, pattern.size()) << "\n";
+        }
+    }
+    PrintLine();
+}
 
 int main() {
     {
         std::string s = "aaba";
-        RegularSearch search(s);
+        SuffixArray search(s);
+        std::cout << "Simple search:\n";
         std::cout << "string: " << s << "\n";
         std::cout << "suffix_array:" << "\n";
         for (int i = 0; i < search.k; ++i) {
@@ -231,15 +306,11 @@ int main() {
         }
         std::cout << "\n";
     }
-    std::cout << "-----------------------\n";
-    {
-        std::string str = "banana";
-        RegularSearch search(str);
-        std::string pattern = "an";
-        std::vector<int> pos = search.Search(pattern);
-        for (int p : pos) {
-            std::cout << p << " " << str.substr(p, pattern.size()) << "\n";
-        }
-    }
+    PrintLine();
+    MakeExampleSearch("banana", {"an"});
+    MakeExampleRegularSearch("banana", {"a?a"});
+    MakeExampleRegularSearch("abracadabra", {"a?a"});
+    MakeExampleRegularSearch("abracadabra", {"a?r", "a??b", "a?r?"});
+
     return 0;
 }
