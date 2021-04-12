@@ -51,7 +51,6 @@ public:
     std::vector<int> Search(const std::string& pattern) {
         int power = *std::lower_bound(powers.begin(), powers.end(), pattern.size());
 
-        std::cout << power << "\n";
         int left = left_bound(pattern, power);
         int right = right_bound(pattern, power);
         std::vector<int> ans;
@@ -61,13 +60,15 @@ public:
         return ans;
     }
 
-    // pattern > left, ищем (left, right]
+    // возвращает наименьший суффикс, больший или равный pattern
     int left_bound(const std::string& pattern, int power) {
-        int left = 0;
+        // ищем его в (left, right]
+        int left = -1;
         int right = n;
         while (left + 1 < right) {
-            int middle = left + (right - left) / 2;
-            if (is_lower(pattern, middle, power)) {
+            // (left + right) / 2 - округление вверх
+            int middle = left + (right - left + 1) / 2;
+            if (is_bigger(pattern, middle, power)) {
                 left = middle;
             } else {
                 right = middle;
@@ -76,19 +77,20 @@ public:
         return right;
     }
 
-    // pattern < left, ищем [left, right)
+    // возвращает наименьший суффикс, больший pattern
     int right_bound(const std::string& pattern, int power) {
+        // ищем его в (left, right]
         int left = 0;
         int right = n;
         while (left + 1 < right) {
             int middle = left + (right - left) / 2;
-            if (is_bigger(pattern, middle, power)) {
+            if (is_lower(pattern, middle, power)) {
                 right = middle;
             } else {
                 left = middle;
             }
         }
-        return left;
+        return right;
     }
 
     bool is_lower(const std::string& pattern, int index, int power) {
@@ -203,13 +205,41 @@ public:
 
 
 int main() {
-    std::string s = "aaba";
-    RegularSearch search(s);
-    std::string pattern = "ab";
-    std::vector<int> ans = search.Search(pattern);
-    for (int c : ans) {
-        std::cout << c << " " << s.substr(c, pattern.size());
+    {
+        std::string s = "aaba";
+        RegularSearch search(s);
+        std::cout << "string: " << s << "\n";
+        std::cout << "suffix_array:" << "\n";
+        for (int i = 0; i < search.k; ++i) {
+            std::cout << "2^" << i << ": ";
+            for (int c : search.suffix_array[i]) {
+                std::cout << c << " ";
+            }
+            std::cout << "\n";
+            for (int c : search.suffix_array[i]) {
+                std::cout
+                        << search.str.substr(c, std::min(static_cast<int>(search.str.size() - c - 1), search.powers[i]))
+                        << "$ ";
+            }
+            std::cout << "\n";
+        }
+        std::string pattern = "ab";
+        std::cout << "pattern: " << pattern << "\n";
+        std::vector<int> ans = search.Search(pattern);
+        for (int c : ans) {
+            std::cout << c << " " << s.substr(c, pattern.size());
+        }
+        std::cout << "\n";
     }
-    std::cout << "\n";
+    std::cout << "-----------------------\n";
+    {
+        std::string str = "banana";
+        RegularSearch search(str);
+        std::string pattern = "an";
+        std::vector<int> pos = search.Search(pattern);
+        for (int p : pos) {
+            std::cout << p << " " << str.substr(p, pattern.size()) << "\n";
+        }
+    }
     return 0;
 }
