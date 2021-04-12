@@ -66,6 +66,7 @@ public:
     }
 
     std::vector<int> RegularSearch(const std::string& pattern) {
+        // разбиваем паттерн на куски, ищем каждый кусок отдельно
         std::vector<std::pair<int, std::string>> small_patterns;
         {
             std::string small_pattern;
@@ -82,6 +83,7 @@ public:
                 small_patterns.emplace_back(pattern.size() - small_pattern.size(), small_pattern);
             }
         }
+        // прибавляем +1 к позиции, с которых начиналась бы строка, содержащая кусок одного выражения
         std::unordered_map<int, int> pos_counts;
         for (auto&[small_pattern_pos, small_pattern] : small_patterns) {
             std::vector<int> res_pos = Search(small_pattern);
@@ -89,6 +91,7 @@ public:
                 ++pos_counts[found_pos - small_pattern_pos];
             }
         }
+        // те позиции, с которых бы начиналась строка, содержащая каждое выражение, имеет счётчик = число единичных выражений
         std::vector<int> ans;
         for (auto[found_pos, count] : pos_counts) {
             if (found_pos >= 0 && count == static_cast<int>(small_patterns.size())) {
